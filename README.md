@@ -1,6 +1,9 @@
 # ShinpuruNodeUI
 Node Based UI Component Written in Swift
 
+Updated to swift 4.2 / Xcode 10.1 
+Review to docs and code cleanup WIP
+
 Companion Project to http://flexmonkey.blogspot.co.uk/2015/09/a-swift-node-based-user-interface.html
 
 ![screenshot](ShinpuruNodeUI/assets/node_ui.jpeg)
