@@ -22,109 +22,107 @@ import UIKit
 
 struct DemoModel
 {
-    var nodes: [DemoNode]
+  var nodes: [DemoNode]
+  
+  init() 
+  {
+    let one = DemoNode(name: "One", position: CGPoint(x: 210, y: 10), value: DemoNodeValue.number(1))
+    let two = DemoNode(name: "Two", position: CGPoint(x: 220, y: 350), value: DemoNodeValue.number(2))
+    let add = DemoNode(name: "Add", position: CGPoint(x: 570, y: 170), type: DemoNodeType.Add, inputs: [one, nil, two])
     
-    init() 
+    nodes = [one, two, add]
+    
+    updateDescendantNodes(one)
+    updateDescendantNodes(two)
+  }
+  
+  mutating func toggleRelationship(_ sourceNode: DemoNode, targetNode: DemoNode, targetIndex: Int) -> [DemoNode]
+  {
+    var ins = targetNode.inputs ?? [DemoNode]()
+    
+    if targetIndex >= ins.count
     {
-        let one = DemoNode(name: "One", position: CGPoint(x: 210, y: 10), value: DemoNodeValue.Number(1))
-        let two = DemoNode(name: "Two", position: CGPoint(x: 220, y: 350), value: DemoNodeValue.Number(2))
-        let add = DemoNode(name: "Add", position: CGPoint(x: 570, y: 170), type: DemoNodeType.Add, inputs: [one, nil, two])
-        
-        nodes = [one, two, add]
-        
-        updateDescendantNodes(one)
-        updateDescendantNodes(two)
+      for _ in 0 ... targetIndex - ins.count
+      {
+        ins.append(nil)
+      }
     }
     
-    mutating func toggleRelationship(sourceNode: DemoNode, targetNode: DemoNode, targetIndex: Int) -> [DemoNode]
+    if ins[targetIndex] == sourceNode
     {
-        if targetNode.inputs == nil
-        {
-            targetNode.inputs = [DemoNode]()
-        }
+      ins[targetIndex] = nil
+      
+      return updateDescendantNodes(sourceNode.demoNode!, forceNode: targetNode.demoNode!)
+    }
+    else
+    {
+      ins[targetIndex] = sourceNode
+      
+      return updateDescendantNodes(sourceNode.demoNode!)
+    }
+  }
+  
+  mutating func deleteNode(_ deletedNode: DemoNode) -> [DemoNode]
+  {
+    var updatedNodes = [DemoNode]()
+    
+    for node in nodes where node.inputs != nil && node.inputs!.contains(where: {$0 == deletedNode})
+    {
+      for (idx, inputNode) in node.inputs!.enumerated() where inputNode == deletedNode
+      {
+        node.inputs?[idx] = nil
         
-        if targetIndex >= targetNode.inputs?.count
-        {
-            for _ in 0 ... targetIndex - targetNode.inputs!.count
-            {
-                targetNode.inputs?.append(nil)
-            }
-        }
+        node.recalculate()
         
-        if targetNode.inputs![targetIndex] == sourceNode
-        {
-            targetNode.inputs![targetIndex] = nil
-            
-            return updateDescendantNodes(sourceNode.demoNode!, forceNode: targetNode.demoNode!)
-        }
-        else
-        {
-            targetNode.inputs![targetIndex] = sourceNode
-            
-            return updateDescendantNodes(sourceNode.demoNode!)
-        }
+        updatedNodes.append(contentsOf: updateDescendantNodes(node))
+      }
     }
     
-    mutating func deleteNode(deletedNode: DemoNode) -> [DemoNode]
+    if let deletedNodeIndex = nodes.index(of: deletedNode)
     {
-        var updatedNodes = [DemoNode]()
-        
-        for node in nodes where node.inputs != nil && node.inputs!.contains({$0 == deletedNode})
-        {
-            for (idx, inputNode) in node.inputs!.enumerate() where inputNode == deletedNode
-            {
-                node.inputs?[idx] = nil
-                
-                node.recalculate()
-                
-                updatedNodes.appendContentsOf(updateDescendantNodes(node))
-            }
-        }
-        
-        if let deletedNodeIndex = nodes.indexOf(deletedNode)
-        {
-            nodes.removeAtIndex(deletedNodeIndex)
-        }
-        
-        return updatedNodes
+      nodes.remove(at: deletedNodeIndex)
     }
     
-    mutating func addNodeAt(position: CGPoint) -> DemoNode
+    return updatedNodes
+  }
+  
+  mutating func addNodeAt(_ position: CGPoint) -> DemoNode
+  {
+    let newNode = DemoNode(name: "New!", position: position, value: DemoNodeValue.number(1))
+    
+    nodes.append(newNode)
+    
+    return newNode
+  }
+  
+  @discardableResult
+  func updateDescendantNodes(_ sourceNode: DemoNode, forceNode: DemoNode? = nil) -> [DemoNode]
+  {
+    var updatedDatedNodes = [[sourceNode]]
+    
+    for targetNode in nodes where targetNode != sourceNode
     {
-        let newNode = DemoNode(name: "New!", position: position, value: DemoNodeValue.Number(1))
+      if let inputs = targetNode.inputs,
+        let targetNode = targetNode.demoNode , inputs.contains(where: {$0 == sourceNode}) || targetNode == forceNode
+      {
+        targetNode.recalculate()
         
-        nodes.append(newNode)
-        
-        return newNode
+        updatedDatedNodes.append(updateDescendantNodes(targetNode))
+      }
     }
     
-    func updateDescendantNodes(sourceNode: DemoNode, forceNode: DemoNode? = nil) -> [DemoNode]
+    return Array(Set<DemoNode>(updatedDatedNodes.flatMap{ $0 })) 
+  }
+  
+  static func nodesAreRelationshipCandidates(_ sourceNode: DemoNode, targetNode: DemoNode, targetIndex: Int) -> Bool
+  {
+    // TODO - prevent circular! recursive function 
+    
+    if sourceNode.isAscendant(targetNode) || sourceNode == targetNode
     {
-        var updatedDatedNodes = [[sourceNode]]
-        
-        for targetNode in nodes where targetNode != sourceNode
-        {
-            if let inputs = targetNode.inputs,
-                targetNode = targetNode.demoNode where inputs.contains({$0 == sourceNode}) || targetNode == forceNode
-            {
-                targetNode.recalculate()
-                
-                updatedDatedNodes.append(updateDescendantNodes(targetNode))
-            }
-        }
-
-        return Array(Set<DemoNode>(updatedDatedNodes.flatMap{ $0 })) 
+      return false
     }
     
-    static func nodesAreRelationshipCandidates(sourceNode: DemoNode, targetNode: DemoNode, targetIndex: Int) -> Bool
-    {
-        // TODO - prevent circular! recursive function 
-        
-        if sourceNode.isAscendant(targetNode) || sourceNode == targetNode
-        {
-            return false
-        }
-        
-        return sourceNode.value?.typeName == targetNode.type.inputSlots[targetIndex].type.typeName
-    }
+    return sourceNode.value?.typeName == targetNode.type.inputSlots[targetIndex].type.typeName
+  }
 }

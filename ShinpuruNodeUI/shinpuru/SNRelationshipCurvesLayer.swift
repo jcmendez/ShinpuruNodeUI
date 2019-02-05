@@ -22,158 +22,158 @@ import UIKit
 
 class SNRelationshipCurvesLayer: CALayer
 {
-    var relationshipLayersDictionary = [SNNodePair: CAShapeLayer]()
+  var relationshipLayersDictionary = [SNNodePair: CAShapeLayer]()
+  
+  func deleteSpecificRelationship(sourceNode: SNNode, targetNode: SNNode, targetNodeInputIndex: Int)
+  {
+    let nodePair = SNNodePair(sourceNode: targetNode, targetNode: sourceNode, targetIndex: targetNodeInputIndex)
     
-    func deleteSpecificRelationship(sourceNode sourceNode: SNNode, targetNode: SNNode, targetNodeInputIndex: Int)
+    if let relationshipLayer = relationshipLayersDictionary[nodePair]
     {
-        let nodePair = SNNodePair(sourceNode: targetNode, targetNode: sourceNode, targetIndex: targetNodeInputIndex)
-   
-        if let relationshipLayer = relationshipLayersDictionary[nodePair]
+      relationshipLayer.removeFromSuperlayer()
+      
+      relationshipLayersDictionary.removeValue(forKey: nodePair)
+    }
+  }
+  
+  func deleteNodeRelationships(_ deletedNode: SNNode)
+  {
+    for (key, value) in relationshipLayersDictionary where key.sourceNode == deletedNode || key.targetNode == deletedNode
+    {
+      value.removeFromSuperlayer()
+      
+      relationshipLayersDictionary.removeValue(forKey: key)
+    }
+  }
+  
+  func renderRelationships(_ nodes: [SNNode], widgetsDictionary: [SNNode: SNNodeWidget], focussedNode: SNNode? = nil)
+  {
+    drawsAsynchronously = true
+    
+    CATransaction.begin()
+    CATransaction.disableActions()
+    CATransaction.setAnimationDuration(0)
+    
+    let sourceNodeTargets: [SNNode]
+    
+    if focussedNode != nil
+    {
+      sourceNodeTargets = nodes.filter
         {
-            relationshipLayer.removeFromSuperlayer()
-            
-            relationshipLayersDictionary.removeValueForKey(nodePair)
-        }
+          $0.inputs != nil && $0.inputs!.contains(where: { $0 == focussedNode })
+      }
+    }
+    else
+    {
+      sourceNodeTargets = [SNNode]()
     }
     
-    func deleteNodeRelationships(deletedNode: SNNode)
+    for sourceNode in nodes where focussedNode == nil || sourceNode == focussedNode || sourceNodeTargets.contains(sourceNode)
     {
-        for (key, value) in relationshipLayersDictionary where key.sourceNode == deletedNode || key.targetNode == deletedNode
-        {
-            value.removeFromSuperlayer()
-            
-            relationshipLayersDictionary.removeValueForKey(key)
-        }
-    }
-    
-    func renderRelationships(nodes: [SNNode], widgetsDictionary: [SNNode: SNNodeWidget], focussedNode: SNNode? = nil)
-    {
-        drawsAsynchronously = true
+      guard let sourceWidget = widgetsDictionary[sourceNode] else
+      {
+        continue
+      }
+      
+      if let inputs = sourceNode.inputs
+      {
+        var inputRowsHeight: CGFloat = 0
         
-        CATransaction.begin()
-        CATransaction.disableActions()
-        CATransaction.setAnimationDuration(0)
-    
-        let sourceNodeTargets: [SNNode]
-        
-        if focussedNode != nil
+        // draw relationships...
+        for (idx, targetNode) in inputs.enumerated()
         {
-            sourceNodeTargets = nodes.filter
+          guard let targetNode = targetNode,
+            let targetWidget = widgetsDictionary[targetNode],
+            let targetOutputRow = targetWidget.outputRenderer,
+            let sourceItemRendererHeight = sourceWidget.itemRenderer?.intrinsicContentSize.height
+            else
+          {
+            if idx < sourceWidget.inputRowRenderers.count
             {
-                $0.inputs != nil && $0.inputs!.contains({ $0 == focussedNode })
+              inputRowsHeight += sourceWidget.inputRowRenderers[idx].intrinsicContentSize.height
             }
-        }
-        else
-        {
-            sourceNodeTargets = [SNNode]()
-        }
-        
-        for sourceNode in nodes where focussedNode == nil || sourceNode == focussedNode || sourceNodeTargets.contains(sourceNode)
-        {
-            guard let sourceWidget = widgetsDictionary[sourceNode] else
-            {
-                continue
-            }
+            continue
+          }
+          
+          if idx < sourceWidget.inputRowRenderers.count
+          {
+            let targetWidgetHeight = targetWidget.intrinsicContentSize.height - targetOutputRow.intrinsicContentSize.height
+            let targetWidgetWidth = targetWidget.intrinsicContentSize.width
+            let rowHeight = sourceWidget.inputRowRenderers[idx].intrinsicContentSize.height
             
-            if let inputs = sourceNode.inputs
-            {
-                var inputRowsHeight: CGFloat = 0
-                
-                // draw relationships...
-                for (idx, targetNode) in inputs.enumerate()
-                {
-                    guard let targetNode = targetNode,
-                        targetWidget = widgetsDictionary[targetNode],
-                        targetOutputRow = targetWidget.outputRenderer,
-                        sourceItemRendererHeight = sourceWidget.itemRenderer?.intrinsicContentSize().height
-                        else
-                    {
-                        if idx < sourceWidget.inputRowRenderers.count
-                        {
-                            inputRowsHeight += sourceWidget.inputRowRenderers[idx].intrinsicContentSize().height
-                        }
-                        continue
-                    }
-                    
-                    if idx < sourceWidget.inputRowRenderers.count
-                    {
-                        let targetWidgetHeight = targetWidget.intrinsicContentSize().height - targetOutputRow.intrinsicContentSize().height
-                        let targetWidgetWidth = targetWidget.intrinsicContentSize().width
-                        let rowHeight = sourceWidget.inputRowRenderers[idx].intrinsicContentSize().height
-                            
-                        let inputPosition = CGPoint(x: targetNode.position.x + targetWidgetWidth,
-                            y: targetNode.position.y + CGFloat(targetWidgetHeight) + (targetOutputRow.intrinsicContentSize().height / 2))
-                        
-                        let targetY = sourceNode.position.y + inputRowsHeight + CGFloat(rowHeight / 2) + sourceItemRendererHeight + SNNodeWidget.titleBarHeight
-                        
-                        let targetPosition = CGPoint(x: sourceNode.position.x, y: targetY)
-                        
-                        let controlPointHorizontalOffset = max(abs(targetPosition.x - inputPosition.x), 40) * 0.75
-                        
-                        let controlPointOne = CGPoint(x: targetPosition.x - controlPointHorizontalOffset, y: targetY)
-                        
-                        let controlPointTwo = CGPoint(x: inputPosition.x + controlPointHorizontalOffset, y: inputPosition.y)
-                        
-                        let relationshipCurvesPath = UIBezierPath()
-                        
-                        drawTerminal(relationshipCurvesPath, position: inputPosition.offset(4, dy: 0))
-                        drawTerminal(relationshipCurvesPath, position: targetPosition.offset(-4, dy: 0))
-                        
-                        relationshipCurvesPath.moveToPoint(targetPosition.offset(-4, dy: 0))
-                        relationshipCurvesPath.addCurveToPoint(inputPosition.offset(4, dy: 0), controlPoint1: controlPointOne, controlPoint2: controlPointTwo)
-                        
-                        inputRowsHeight += rowHeight
-                        
-                        let nodePair = SNNodePair(sourceNode: sourceNode, targetNode: targetNode, targetIndex: idx)
-                        
-                        let layer = layerForNodePair(nodePair)
-                        
-                        layer.path = relationshipCurvesPath.CGPath
-                    }
-                }
-            }
+            let inputPosition = CGPoint(x: targetNode.position.x + targetWidgetWidth,
+                                        y: targetNode.position.y + CGFloat(targetWidgetHeight) + (targetOutputRow.intrinsicContentSize.height / 2))
+            
+            let targetY = sourceNode.position.y + inputRowsHeight + CGFloat(rowHeight / 2) + sourceItemRendererHeight + SNNodeWidget.titleBarHeight
+            
+            let targetPosition = CGPoint(x: sourceNode.position.x, y: targetY)
+            
+            let controlPointHorizontalOffset = max(abs(targetPosition.x - inputPosition.x), 40) * 0.75
+            
+            let controlPointOne = CGPoint(x: targetPosition.x - controlPointHorizontalOffset, y: targetY)
+            
+            let controlPointTwo = CGPoint(x: inputPosition.x + controlPointHorizontalOffset, y: inputPosition.y)
+            
+            let relationshipCurvesPath = UIBezierPath()
+            
+            drawTerminal(relationshipCurvesPath, position: inputPosition.offset(4, dy: 0))
+            drawTerminal(relationshipCurvesPath, position: targetPosition.offset(-4, dy: 0))
+            
+            relationshipCurvesPath.move(to: targetPosition.offset(-4, dy: 0))
+            relationshipCurvesPath.addCurve(to: inputPosition.offset(4, dy: 0), controlPoint1: controlPointOne, controlPoint2: controlPointTwo)
+            
+            inputRowsHeight += rowHeight
+            
+            let nodePair = SNNodePair(sourceNode: sourceNode, targetNode: targetNode, targetIndex: idx)
+            
+            let layer = layerForNodePair(nodePair)
+            
+            layer.path = relationshipCurvesPath.cgPath
+          }
         }
-        
-        CATransaction.commit()
+      }
     }
     
-    func layerForNodePair(nodePair: SNNodePair) -> CAShapeLayer
+    CATransaction.commit()
+  }
+  
+  func layerForNodePair(_ nodePair: SNNodePair) -> CAShapeLayer
+  {
+    if relationshipLayersDictionary[nodePair] == nil
     {
-        if relationshipLayersDictionary[nodePair] == nil
-        {
-            let layer = CAShapeLayer()
-            
-            layer.strokeColor = UIColor.whiteColor().CGColor
-            layer.lineWidth = 4
-            layer.fillColor = nil
-            layer.lineCap = kCALineCapSquare
-            
-            layer.shadowColor = UIColor.blackColor().CGColor
-            layer.shadowOffset = CGSizeZero
-            layer.shadowRadius = 2
-            layer.shadowOpacity = 1
-            
-            relationshipLayersDictionary[nodePair] = layer
-            
-            addSublayer(layer)
-        }
-        
-        return relationshipLayersDictionary[nodePair]!
+      let layer = CAShapeLayer()
+      
+      layer.strokeColor = UIColor.white.cgColor
+      layer.lineWidth = 4
+      layer.fillColor = nil
+      layer.lineCap = CAShapeLayerLineCap.square
+      
+      layer.shadowColor = UIColor.black.cgColor
+      layer.shadowOffset = .zero
+      layer.shadowRadius = 2
+      layer.shadowOpacity = 1
+      
+      relationshipLayersDictionary[nodePair] = layer
+      
+      addSublayer(layer)
     }
     
-    func drawTerminal(relationshipCurvesPath: UIBezierPath, position: CGPoint)
-    {
-        let rect = UIBezierPath(roundedRect: CGRect(origin: CGPoint(x: position.x - 2, y: position.y - 2), size: CGSize(width: 4, height: 4)), cornerRadius: 0)
-        
-        relationshipCurvesPath.appendPath(rect)
-    }
+    return relationshipLayersDictionary[nodePair]!
+  }
+  
+  func drawTerminal(_ relationshipCurvesPath: UIBezierPath, position: CGPoint)
+  {
+    let rect = UIBezierPath(roundedRect: CGRect(origin: CGPoint(x: position.x - 2, y: position.y - 2), size: CGSize(width: 4, height: 4)), cornerRadius: 0)
     
+    relationshipCurvesPath.append(rect)
+  }
+  
 }
 
 extension CGPoint
 {
-    func offset(dx: CGFloat, dy: CGFloat) -> CGPoint
-    {
-        return CGPoint(x: x + dx, y: y + dy)
-    }
+  func offset(_ dx: CGFloat, dy: CGFloat) -> CGPoint
+  {
+    return CGPoint(x: x + dx, y: y + dy)
+  }
 }

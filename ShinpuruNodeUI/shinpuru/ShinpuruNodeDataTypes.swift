@@ -24,178 +24,178 @@ import UIKit
 
 class SNNode: Equatable, Hashable
 {
-    let uuid  = NSUUID()
-    
-    var numInputSlots: Int = 0
-    var inputs: [SNNode?]?
-    var position: CGPoint
-    var name: String
-    
-    required init(name: String, position: CGPoint)
+  let uuid  = UUID()
+  
+  var numInputSlots: Int = 0
+  var inputs: [SNNode?]?
+  var position: CGPoint
+  var name: String
+  
+  required init(name: String, position: CGPoint)
+  {
+    self.name = name
+    self.position = position
+  }
+  
+  var hashValue: Int
+  {
+    return uuid.hashValue
+  }
+  
+  func isAscendant(_ node: SNNode) -> Bool // TO DO test long chain
+  {
+    guard let inputs = inputs else
     {
-        self.name = name
-        self.position = position
+      return false
     }
     
-    var hashValue: Int
+    for inputNode in inputs
     {
-        return uuid.hashValue
+      if inputNode == node
+      {
+        return true
+      }
+      else if inputNode != nil && inputNode!.isAscendant(node)
+      {
+        return true
+      }
     }
     
-    func isAscendant(node: SNNode) -> Bool // TO DO test long chain
-    {
-        guard let inputs = inputs else
-        {
-            return false
-        }
-        
-        for inputNode in inputs
-        {
-            if inputNode == node
-            {
-                return true
-            }
-            else if inputNode != nil && inputNode!.isAscendant(node)
-            {
-                return true
-            }
-        }
-        
-        return false
-    }
+    return false
+  }
 }
 
 func == (lhs: SNNode, rhs: SNNode) -> Bool
 {
-    return lhs.uuid.isEqual(rhs.uuid)
+  return (lhs.uuid == rhs.uuid)
 }
 
 /// Node Pair - used as a dictionary key in relationship curves layer
 
 struct SNNodePair: Equatable, Hashable
 {
-    let sourceNode: SNNode
-    let targetNode: SNNode
-    let targetIndex: Int
-    
-    var hashValue: Int
-    {
-        return sourceNode.uuid.hashValue + targetNode.uuid.hashValue + targetIndex.hashValue
-    }
+  let sourceNode: SNNode
+  let targetNode: SNNode
+  let targetIndex: Int
+  
+  var hashValue: Int
+  {
+    return sourceNode.uuid.hashValue + targetNode.uuid.hashValue + targetIndex.hashValue
+  }
 }
 
 func == (lhs: SNNodePair, rhs: SNNodePair) -> Bool
 {
-    return lhs.sourceNode == rhs.sourceNode && lhs.targetNode == rhs.targetNode && lhs.targetIndex == rhs.targetIndex
+  return lhs.sourceNode == rhs.sourceNode && lhs.targetNode == rhs.targetNode && lhs.targetIndex == rhs.targetIndex
 }
 
 /// SNView delegate protocol
 
 protocol SNDelegate: NSObjectProtocol
 {
-    func dataProviderForView(view: SNView) -> [SNNode]?
-    
-    func itemRendererForView(view: SNView, node: SNNode) -> SNItemRenderer
-    
-    func inputRowRendererForView(view: SNView, inputNode: SNNode?, parentNode: SNNode, index: Int) -> SNInputRowRenderer
-    
-    func outputRowRendererForView(view: SNView, node: SNNode) -> SNOutputRowRenderer
-    
-    func nodeSelectedInView(view: SNView, node: SNNode?)
-    
-    func nodeMovedInView(view: SNView, node: SNNode)
-    
-    func nodeCreatedInView(view: SNView, position: CGPoint)
-    
-    func nodeDeletedInView(view: SNView, node: SNNode)
-    
-    func relationshipToggledInView(view: SNView, sourceNode: SNNode, targetNode: SNNode, targetNodeInputIndex: Int)
-    
-    func defaultNodeSize(view: SNView) -> CGSize
-    
-    func nodesAreRelationshipCandidates(sourceNode: SNNode, targetNode: SNNode, targetIndex: Int) -> Bool 
+  func dataProviderForView(_ view: SNView) -> [SNNode]?
+  
+  func itemRendererForView(_ view: SNView, node: SNNode) -> SNItemRenderer
+  
+  func inputRowRendererForView(_ view: SNView, inputNode: SNNode?, parentNode: SNNode, index: Int) -> SNInputRowRenderer
+  
+  func outputRowRendererForView(_ view: SNView, node: SNNode) -> SNOutputRowRenderer
+  
+  func nodeSelectedInView(_ view: SNView, node: SNNode?)
+  
+  func nodeMovedInView(_ view: SNView, node: SNNode)
+  
+  func nodeCreatedInView(_ view: SNView, position: CGPoint)
+  
+  func nodeDeletedInView(_ view: SNView, node: SNNode)
+  
+  func relationshipToggledInView(_ view: SNView, sourceNode: SNNode, targetNode: SNNode, targetNodeInputIndex: Int)
+  
+  func defaultNodeSize(_ view: SNView) -> CGSize
+  
+  func nodesAreRelationshipCandidates(_ sourceNode: SNNode, targetNode: SNNode, targetIndex: Int) -> Bool 
 }
 
 /// Base class for node item renderer
 
 class SNItemRenderer: UIView
 {
-    weak var node: SNNode?
+  weak var node: SNNode?
+  
+  required init(node: SNNode)
+  {
+    self.node = node
     
-    required init(node: SNNode)
-    {
-        self.node = node
-        
-        super.init(frame: CGRectZero)
-    }
-    
-    required init?(coder aDecoder: NSCoder)
-    {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    func reload()
-    {
-        fatalError("reload() has not been implemented")
-    }
+    super.init(frame: .zero)
+  }
+  
+  required init?(coder aDecoder: NSCoder)
+  {
+    fatalError("init(coder:) has not been implemented")
+  }
+  
+  func reload()
+  {
+    fatalError("reload() has not been implemented")
+  }
 }
 
 /// Base class for output row renderer
 
 class SNOutputRowRenderer: UIView
 {
-    weak var node: SNNode?
+  weak var node: SNNode?
+  
+  required init(node: SNNode)
+  {
+    self.node = node
     
-    required init(node: SNNode)
-    {
-        self.node = node
-        
-        super.init(frame: CGRectZero)
-    }
-    
-    func reload()
-    {
-        fatalError("reload() has not been implemented")
-    }
-    
-    required init?(coder aDecoder: NSCoder)
-    {
-        fatalError("init(coder:) has not been implemented")
-    }
+    super.init(frame: .zero)
+  }
+  
+  func reload()
+  {
+    fatalError("reload() has not been implemented")
+  }
+  
+  required init?(coder aDecoder: NSCoder)
+  {
+    fatalError("init(coder:) has not been implemented")
+  }
 }
 
 /// Base class for input row renderer
 
 class SNInputRowRenderer: UIView
 {
-    var index: Int
+  var index: Int
+  
+  unowned let parentNode: SNNode
+  weak var inputNode: SNNode?
+  
+  required init(index: Int, inputNode: SNNode?, parentNode: SNNode)
+  {
+    self.index = index
+    self.inputNode = inputNode
+    self.parentNode = parentNode
     
-    unowned let parentNode: SNNode
-    weak var inputNode: SNNode?
-    
-    required init(index: Int, inputNode: SNNode?, parentNode: SNNode)
-    {
-        self.index = index
-        self.inputNode = inputNode
-        self.parentNode = parentNode
-        
-        super.init(frame: CGRectZero)
-    }
-
-    func reload()
-    {
-        fatalError("reload() has not been implemented")
-    }
-    
-    required init?(coder aDecoder: NSCoder)
-    {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    required init(node: SNNode)
-    {
-        fatalError("init(node:) has not been implemented")
-    }
+    super.init(frame: .zero)
+  }
+  
+  func reload()
+  {
+    fatalError("reload() has not been implemented")
+  }
+  
+  required init?(coder aDecoder: NSCoder)
+  {
+    fatalError("init(coder:) has not been implemented")
+  }
+  
+  required init(node: SNNode)
+  {
+    fatalError("init(node:) has not been implemented")
+  }
 }
 
 
